@@ -1,0 +1,1246 @@
+---
+title: "white wine Investigation"
+output:
+  html_document: default
+---
+
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 18px;
+  }
+  
+</style>  
+```{r include= FALSE}
+knitr::opts_chunk$set(echo = FALSE) # to prevent showing the code in the knitted file
+
+```
+
+
+This report explores white wine quality data set, which contains 4898 white wines, with 11 variables on quantifying the chemical properties of each wine, at least 3 wine experts rated the quality of each wine, providing a rating between 0(very bad), and 10 (very excellent), SO THE BIG QUESTION IS :
+
+                **Which chemical properties influence the quality of white wines?**
+This data set will be analyzed to eventually answer this question.
+ 
+In the first, let's take a general look on the data set:               
+
+```{r variable names and their types, echo=FALSE, message=FALSE, warning=FALSE}
+setwd('C:/Users/DELL/Downloads')
+white_wine <- read.csv('wineQualityWhites.csv')
+ 
+str(white_wine) 
+```
+
+
+ all of variables are numbers, the x variable shows an id for every wine, and the quality is an integer number.the quality is the response variable that we want to know which of the other variables are really can be used to predict it. 
+
+```{r statistical summary for all of variables in the data set, echo=FALSE, message=FALSE, warning=FALSE}
+summary(white_wine)
+```
+
+ here is a quick look to the range of values for each variable with some statistics for them, for example, we notice that the minimum quality is 3 and the maximum quality is 9.
+
+
+##Univariate Plots Section
+
+
+```{r the important libraries, echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(reshape2)
+library(GGally)
+library(gridExtra)
+library(ggthemes)
+library(dplyr)
+library(scales)
+library(memisc)
+
+theme_set(theme_gray(base_size = 20))
+
+```
+
+###the quality investigation
+```{r quality variable distribution, echo=FALSE, message=FALSE, warning=FALSE}
+qplot(quality, data = white_wine, binwidth = .5, color = I('black'), fill = I('PLUM'))+
+  scale_x_continuous( breaks = c(3,4,5,6,7,8,9))+
+  scale_y_continuous( breaks = seq(0,2500,200))+
+  labs(x = 'the quality rate of wines' , y = 'the number of wines for each rate ')+
+  ggtitle('the distribution of quality variable')
+```
+From this plot,the shape is normally distributed, the rate 6 has the highest number of wines then rate 5, and the rate 9 and 3 have the lowest number, so I think from this plot it is hard to make a very excellent wine. so we are in need to do EDA .
+
+```{r statistical summary and the distribution of quality variable, echo=FALSE, message=FALSE, warning=FALSE}
+summary(white_wine$quality)
+table(white_wine$quality)
+```
+
+ this table supports the previous plot, that five wines have rate 9 , and 20 wines have rate 3. and the summary tells us that 75% of the data rated 6 and less, the mean and median have a very close values, that the shape is normally distributed. 
+ 
+ It's good to create a new variable called quality_rate, that give the 3,4,5 rates a bad rate, the 6 is good rate , and 7,8,9 are an excellent rate.
+ 
+```{r quality_rate, echo=FALSE, message=FALSE, warning=FALSE}
+white_wine$quality_rate <- ifelse(white_wine$quality < 6, 'Bad', 'Excellent')
+white_wine$quality_rate <- ifelse(white_wine$quality == 6 , 'Good', white_wine$quality_rate)  
+
+##order the levels of quality_rate variable 
+white_wine$quality_rate <- ordered(white_wine$quality_rate, levels = c('Excellent','Good','Bad'))
+
+table(white_wine$quality_rate)
+
+```
+###the fixed acidity investigation
+ 
+```{r fixed acidity, echo=FALSE, fig.height=5, fig.width=20, message=FALSE}
+p1 <- qplot(fixed.acidity, data = white_wine, color = I('black'), fill = I('PLUM'))+
+  labs( x = 'the fixed acidity in the wine (g/dm^3)', y = 'the number of wines for each value of the fixed acidity' )+
+  ggtitle('the fixed acidity distribution')
+        
+
+
+p2 <- qplot( x = quality_rate, y = fixed.acidity, data = white_wine, geom = 'boxplot', fill = I('DARKSALMON'), color = I('black'))+
+  labs( x = 'the quality of wines', y = 'the fixed acidity  for each rate')+
+  ggtitle('the fixed acidity distribution for each rate using box plots') 
+
+grid.arrange(p1, p2, ncol = 2)
+```
+
+
+I will scale the x axis to see the distribution in a deep look in the histogram, from box plots we can see many outliers in all rates, we can do scaling at y axis to see the median for each rate.
+
+
+```{r fixed acidity2, echo=FALSE, fig.height=5, fig.width=20, message=FALSE, warning=FALSE}
+p3 <- qplot(fixed.acidity, data = white_wine, binwidth = .05,color = I('black'), fill = I('PLUM'))+
+    scale_x_continuous( breaks = seq(3,11,.4) , limits = c(3,11))+
+   labs( x = 'the fixed acidity in the wine (g/dm^3)', y = 'the number of wines for each value of the fixed acidity' )+
+  ggtitle('the fixed acidity distribution')
+
+p4<- qplot( x = quality_rate, y = fixed.acidity, data = white_wine, geom = 'boxplot',fill = I('DARKSALMON'), color = I('black'))+
+  coord_cartesian(ylim = c(6,9))+
+  labs( x = 'the quality of wines', y = 'the fixed acidity  for each rate')+
+  ggtitle('the fixed acidity distribution for each rate')
+
+grid.arrange(p3, p4 ,ncol = 2)
+  
+```
+
+
+ the fixed acidity has peaks at 6.8, 6.6, 6.4. I put the bin width very small to see clearly the count for every value, that from the table of this variable the values are one decimal number x.x except three values from the plot we can see it, 6.15, 6.45, 7.15 . the shape is normally distributed.that the bulk of the data are in the middle of the plot between (5.8 -7.8)
+ 
+ From box plots there is not a big difference between the three rates for the fixed acidity variable on average, I will take the statistical summary to support that:
+ 
+```{r statistical summary for the fixed acidity for each quality rate, echo=FALSE}
+by(white_wine$fixed.acidity, white_wine$quality_rate, summary)
+```
+
+
+the median values are very close from each other, because of the outliers, it is better to take the median as the measure of the center(6.7, 6.8, 6.8) for three rates. but we can notice that the maximum value of this variable for excellent rate is 9.2 g/dm^3, which is the least maximum value. 
+
+###the Volatile acidity investigation
+
+```{r Volatile acidity, echo=FALSE, fig.height=5, fig.width=20, message=FALSE, warning=FALSE}
+pv1 <- qplot(volatile.acidity, data = white_wine, color = I('black'), fill = I('plum'))+
+  ggtitle('the volatile acidity distribution')+
+  labs(x = 'volatile acidity (g/dm^3)', y = 'the number of wines')
+
+pv2 <- qplot(x = quality_rate, y = volatile.acidity, data = white_wine,geom = 'boxplot', fill = I('DARKSALMON'))+
+  ggtitle('the volatile acidity for each quality rate')+
+  labs( x = 'the quality rate', y = 'the volatile acidity (g/dm^3) ')
+  
+
+grid.arrange(pv1, pv2, ncol = 2)
+
+```
+
+the shape of the histogram is right skewed distribution, transforming it to a normal distribution using the log function is better, and doing some scaling on box plots. there are lot of outliers for all rates, we can do some scaling to see the quantiles more clearly.
+
+```{r volatile acidity2, echo=FALSE, fig.height=5, fig.width=20, message=FALSE, warning=FALSE}
+pv3 <- qplot(volatile.acidity, data = white_wine, binwidth =.01, color = I('black'), fill = I('PLUM'))+
+     scale_x_log10(breaks = seq(0,1, .1 ))+
+     ggtitle('the volatile acidity distribution')+
+     labs(x = 'volatile acidity (g/dm^3)', y = 'the number of wines')
+
+
+pv4 <- qplot(x = quality_rate, y = volatile.acidity, data = white_wine,geom = 'boxplot', fill = I('DARKSALMON'))+
+  coord_cartesian( ylim = c(.15,.5))+
+  ggtitle('the volatile acidity for each quality rate')+
+  labs( x = 'the quality rate', y = 'the volatile acidity (g/dm^3) ')
+   
+grid.arrange(pv3, pv4, ncol = 2)
+```
+ 
+ 
+ there are many gaps when setting the bin width very small.the range of the values(.08-1.1), on average the bad rate has the maximum amount of volatile acidity, good and excellent rates have the same amount of it.we can support our investigation using the statistical summary.
+
+```{r statistical summary of the volatile acidity for each rate, echo=FALSE}
+by(white_wine$volatile.acidity, white_wine$quality_rate, summary)
+```
+
+from the summary, the maximum value for the excellent rate is 0,76 g/dm^3, which is the least maximum value.
+
+
+###citric acid investigation
+
+```{r citric acid1, echo=FALSE, fig.height=5, fig.width=20, message=FALSE, warning=FALSE}
+pc1 <- qplot(citric.acid , data = white_wine, color = I('black'), fill = I('PLUM'))+
+  ggtitle('the citric acid distribution')+
+  labs( x = 'citric acid (g/dm^3)', y = 'the number of wines')
+
+pc2 <- qplot(x = quality_rate, y = citric.acid , data = white_wine, geom = 'boxplot', color = I('black'), fill = I('DARKSALMON'))+
+  ggtitle('the citric acid for each rate ')+
+  labs( x = 'quality rate', y = 'the citric acid amount (g/dm^3)')
+
+grid.arrange(pc1, pc2, ncol = 2)
+```
+
+from the histogram, the shape is normally distributed, doing some scaling on x axis is better to see the values of citric acid, and the box plots have lots of outlieres, doing some limits on y axis is good :
+
+```{r citric acid2, echo=FALSE, fig.height=5, fig.width=20, message=FALSE, warning=FALSE}
+pc3 <- qplot(citric.acid , data = white_wine, binwidth = .01, color = I('black'), fill = I('PLUM'))+
+  scale_x_continuous( breaks = seq(0,1,.1), limits = c(0,1))+
+  ggtitle('the citric acid distribution')+
+  labs( x = 'citric acid (g/dm^3)', y = 'the number of wines')
+
+pc4 <- qplot(x = quality_rate, y = citric.acid , data = white_wine, geom = 'boxplot', color = I('black'), fill = I('DARKSALMON'))+
+  coord_cartesian(ylim = c(.2,.5))+
+  ggtitle('the citric acid for each rate ')+
+  labs( x = 'quality rate', y = 'the citric acid amount (g/dm^3)')
+
+grid.arrange(pc3, pc4, ncol = 2)
+```
+
+from this plot, we see a normal distribution for the citric acid and the bulk of the data is in the range between .2 and .5, there is a sudden peak at .49, this variable has values as x.xx , that has two decimal numbers. and from the box plots, on average the citric acid values for all rate are very close, doing statistical summary is good to see the values of medians .
+
+
+```{r statistical summary for citric acid, echo=FALSE}
+
+## using by function to see the summary for each quality_rate level
+by(white_wine$citric.acid, white_wine$quality_rate, summary)
+```
+
+yes, they are very close (.32, .31, .32), and the maximum value for the excellent rate is .74 g/dm^3 which is the least one.
+
+###the residual sugar investigation
+
+```{r residual sugar1, message=FALSE, warning=FALSE, fig.height = 5, fig.width= 20}
+pr1 <- qplot(residual.sugar, data = white_wine, color = I('black'), fill = I('PLUM'))+
+  ggtitle('the residual sugar distribution')+
+  labs( x = 'the residual sugar (g/dm^3)', y = 'the number of wines')
+
+pr2 <- qplot(x = quality_rate, y = residual.sugar, data = white_wine, geom = 'boxplot', color = I('black'), fill = I('DARKSALMON'))+
+  ggtitle('the residual sugar for each rate ')+
+  labs(x = 'the quality rate', y = 'the residual sugar g/dm^3')
+
+grid.arrange(pr1, pr2, ncol = 2)
+```
+
+the shape of distribution is right skewed, so transforming this variable to be normal distributed is better to understand the distribution. and scaling the box plots to get the quantiles,there are many outliers in excellent, and good rates. there is an outlier more than 45 that means this wine is considered as sweet, which was rated as good. the question here, what is the average amount of the residual sugar that was added to the excellent rate wines?
+
+```{r residual sugar2, message=FALSE, warning=FALSE, fig.height = 5, fig.width= 20}
+pr3 <- qplot(residual.sugar, data = white_wine, binwidth = .05, color = I('black'), fill = I('PLUM'))+
+    scale_x_log10( breaks = seq(0,20,2))+
+    ggtitle('the residual sugar distribution')+
+    labs( x = 'the residual sugar (g/dm^3)', y = 'the number of wines')
+
+pr4 <- qplot(x = quality_rate, y = residual.sugar, data = white_wine, geom = 'boxplot', color = I('black'), fill = I('DARKSALMON'))+
+  coord_cartesian( ylim = c(0,12))+
+  ggtitle('the residual sugar for each rate ')+
+  labs(x = 'the quality rate', y = 'the residual sugar g/dm^3')
+
+grid.arrange(pr3, pr4, ncol = 2)
+```
+
+
+this is a bi modal distribution, that shows the most values between 1 and 20 (g/dm^3), 4 is the middle values on x axis, It has now many peaks,we can see the difference in the residual sugar between the rates, that on average the bad rate has the maximum amount of sugar, the minimum amount of sugar for the excellent rate which is equal to 3.8 g/dm^3, that makes a sense for our investigation.
+
+We can see the statistical summary.
+
+```{r}
+#using by function to see the summary for each quality_rate
+by(white_wine$residual.sugar, white_wine$quality_rate, summary)
+```
+
+We can notice the difference between the medians and third quantiles for each quality rate in the residual sugar variable, that 75% of the wines that is rated as excellent have a residual sugar amount not more than 7.4g/dm^3
+
+###chlorides investigation
+
+```{r chlorides1, message=FALSE, warning=FALSE, fig.height = 5, fig.width= 20}
+pcl1 <- qplot(chlorides , data = white_wine, color = I('black'), fill = I('PLUM'))+
+  ggtitle('the sodium chloride amount distibution')+
+  labs(x = 'the sodium chloride (g/dm^3)', y = 'the number of wines')
+
+pcl2 <- qplot(x = quality_rate, y = chlorides , data = white_wine, geom = 'boxplot', color = I('black'), fill = I('DARKSALMON'))+
+  ggtitle('the sodium chloride amount for each rate')+
+  labs(x = 'the quality rate', y = 'the amount of sodium chloride (g/dm^3)')
+
+grid.arrange(pcl1, pcl2, ncol = 2)
+  
+```
+
+
+the shape is right skewed distribution, so it needs transformation, there are lots of outliers, so it needs scaling, that the quantiles don't appear very well, So what is the difference between the quality rates in the chlorides variable?:
+
+```{r chlorides2, message=FALSE, warning=FALSE, fig.height = 5, fig.width= 20}
+pcl3 <- qplot(chlorides , data = white_wine,binwidth = .01, color = I('black'), fill = I('PLUM'))+
+  scale_x_log10(breaks = seq(.01 , .1 , .02))+
+  ggtitle('the sodium chloride amount distibution')+
+  labs(x = 'the sodium chloride (g/dm^3)', y = 'the number of wines')
+
+pcl4 <- qplot(x = quality_rate, y = chlorides , data = white_wine, geom = 'boxplot', color = I('black'), fill = I('DARKSALMON'))+
+  coord_cartesian( ylim = c(0.02,.075))+
+  ggtitle('the sodium chloride amount for each rate')+
+  labs(x = 'the quality rate', y = 'the amount of sodium chloride (g/dm^3)')
+
+
+grid.arrange(pcl3, pcl4, ncol = 2)
+```
+
+It's clear that the bulk of the data are between .03 and .06 (g/dm^3) for the amount of sodium chloride salt. there are many values at the right of the shape, it seems outliers. 
+On average the amount of sodium chlorides is increasing gradually according to the rates from excellent to bad, the excellent rate has the least amount on average, I think this is one of the chemical property that influence the quality of the wine, we can take the statistical summary:
+
+
+
+```{r chlorides statistical summary }
+#using by function to show the summary for each quality rate level
+by(white_wine$chlorides, white_wine$quality_rate, summary)
+```
+
+the median of the excellent rate for the chlorides equals .037g/dm^3, the good rate equals .043, and the bad rate equals .047, I think the taste of sodium chloride become evident in the taste with a high amount, and that is bad.
+
+###the free sulfur dioxide investigation
+
+```{r free sulfur dioxide1,  message=FALSE, warning=FALSE, fig.height = 5, fig.width= 20}
+
+pf1 <- qplot(free.sulfur.dioxide , data = white_wine, color = I('black'), fill = I('PLUM'))+
+     ggtitle('the free sulfur dioxide distribution')+
+     labs(x = 'the free sulfur dioxide amount (mg/dm^3)', y = 'the number of wines')
+
+pf2 <- qplot(x = quality_rate, y = free.sulfur.dioxide, data = white_wine, geom = 'boxplot', color = I('black'), fill = I('DARKSALMON') )+
+  ggtitle('the free sulfur dioxide for each rate')+
+  labs(x = 'the quality rate', y = 'the free sulfur dioxide (mg/dm^3)')
+  
+
+grid.arrange(pf1, pf2, ncol = 2)  
+
+```
+
+the shape is right skewed, I will transform it to a normal distribution using the square root function, It seems there is no difference in this variable for the three rates,there is an outlier that equals to 289, it is very big value compared to the others.we can see that on the bad rate, the question is what is the average of free sulfur dioxide that is added to the wines?  I will take a closer look at it:
+
+```{r message=FALSE, warning=FALSE, fig.height = 15, fig.width= 30}
+pf3 <- qplot(free.sulfur.dioxide , data = white_wine, binwidth = .1, color = I('black'), fill = I('PLUM'))+
+     scale_x_sqrt( breaks = seq(0,150,10))+
+     ggtitle('the free sulfur dioxide distribution')+
+     labs(x = 'the free sulfur dioxide amount (mg/dm^3)', y = 'the number of wines')
+
+pf4 <- qplot(x = quality_rate, y = free.sulfur.dioxide, data = white_wine, geom = 'boxplot', color = I('black'), fill = I('DARKSALMON') )+
+  coord_cartesian(ylim = c(0,50))+
+  ggtitle('the free sulfur dioxide for each rate')+
+  labs(x = 'the quality rate', y = 'the free sulfur dioxide (mg/dm^3)')
+  
+
+grid.arrange(pf3, pf4, ncol = 1)  
+```
+
+the free sulfer dioxide prevents microbial growth and the oxidation of wine, the bulk of the data are between 20 and 60 (mg/dm^3), there are many peaks here, from box plots, the amount of this variable is very close for all rates on average.
+
+```{r}
+summary(white_wine$free.sulfur.dioxide)
+```
+
+On average the free sulfur dioxide is added to the wines with 35,31 mg/dm^3.
+
+###the total sulfur dioxide investigation
+
+```{r total sulfur dioxide1, message=FALSE, warning=FALSE, fig.height = 5, fig.width= 20}
+pt1 <- qplot(total.sulfur.dioxide, data = white_wine, color = I('black'), fill = I('PLUM'))+
+     ggtitle('the total sulfur dioxide distribution')+
+     labs(x = 'the total sulfur dioxide amount (mg/dm^3)', y = 'the number of wines')
+
+pt2 <- qplot(x = quality_rate, y = total.sulfur.dioxide, data = white_wine, geom = 'boxplot', color = I('black'), fill = I('DARKSALMON') )+
+    ggtitle('the total sulfur dioxide for each rate')+
+    labs(x = 'the quality rate', y = 'the total sulfur dioxide (mg/dm^3)')
+
+grid.arrange(pt1, pt2, ncol = 2)
+  
+```
+
+the shape is a normal distribution,there are many outliers, from the histogram there is an outlier more than 400,from box plots, it is from the bad rate, take a small bin width, and take a closer look to the quantiles, but before that what is the range of this property that the bulk of the data are in? 
+
+```{r the total sulfur dioxide2, message=FALSE, warning=FALSE, fig.height = 15, fig.width= 30}
+pt3 <- qplot(total.sulfur.dioxide, data = white_wine, binwidth = 1, color = I('black'), fill = I('PLUM'))+
+    scale_x_continuous( breaks = seq(0,300,10), limits = c(0,300))+
+     ggtitle('the total sulfur dioxide distribution')+
+     labs(x = 'the total sulfur dioxide amount (mg/dm^3)', y = 'the number of wines')
+
+pt4 <- qplot(x = quality_rate, y = total.sulfur.dioxide, data = white_wine, geom = 'boxplot', color = I('black'), fill = I('DARKSALMON') )+
+    coord_cartesian(ylim = c(50,200))+ 
+    ggtitle('the total sulfur dioxide for each rate')+
+    labs(x = 'the quality rate', y = 'the total sulfur dioxide (mg/dm^3)')
+
+grid.arrange(pt3, pt4, ncol = 1)
+  
+```
+
+the bulk of the data are between (80 - 200)mg/dm^3, there is a clear difference between the rates for the total sulfur dioxide on average, the big values are in the bad rate, these notes make a sense for us, especially this property affects on the taste and smell of the wine.
+
+### the density investigation
+
+
+```{r density1, message=FALSE, warning=FALSE, fig.height = 5, fig.width= 20}
+pd1 <- qplot(density, data = white_wine, color = I('black'), fill = I('PLUM'))+
+     ggtitle('the density of water distribution')+
+     labs(x = 'the density of water (g/cm^3)', y = 'the number of wines')
+
+pd2 <- qplot(x = quality_rate, y = density, data = white_wine, geom = 'boxplot', color = I('black'), fill = I('DARKSALMON') )+
+    ggtitle('the density of water for each rate')+
+    labs(x = 'the quality rate', y = 'the density of water(g/cm^3)')
+
+grid.arrange(pd1, pd2, ncol = 2)
+  
+```
+
+The shape is normal distribution, from the box plots the bulk of the data is between .99 and 1,the most of outliers are in the excellent rate,but the high values of outliers are in the Good rate, so scaling the histogram and box plots are good.
+
+
+```{r density2, message=FALSE, warning=FALSE, fig.height = 5, fig.width= 20}
+pd3 <- qplot(density, data = white_wine, binwidth = .0005, color = I('black'), fill = I('PLUM'))+
+     scale_x_continuous( breaks = seq(0.98,1.04,.005), limits = c(0.98,1.04))+
+     ggtitle('the density of water distribution')+
+     labs(x = 'the density of water (g/cm^3)', y = 'the number of wines')
+
+pd4 <- qplot(x = quality_rate, y = density, data = white_wine, geom = 'boxplot', color = I('black'), fill = I('DARKSALMON') )+
+    coord_cartesian(ylim = c(.99 , 1.00))+
+    ggtitle('the density of water for each rate')+
+    labs(x = 'the quality rate', y = 'the density of water(g/cm^3)')
+
+grid.arrange(pd3, pd4, ncol = 2)
+  
+```
+
+there is a clear difference in the density of the water between the rates, that on average the bad rate have the highest amount of the density of the water, and the excellent rate have the lowest one.on other wise the bulk of the data are between .99 and 1 that means the difference is just with .00x amounts, so what is affected on the density of the wine to be close to 1, which is the density of the water? I will investigate that later.
+
+The pH value investigation
+
+```{r pH1,  message=FALSE, warning=FALSE, fig.height = 5, fig.width= 20}
+pph1 <- qplot(pH, data = white_wine, color = I('black'), fill = I('PLUM'))+
+     ggtitle('the PH value distribution')+
+     labs(x = 'the pH value', y = 'the number of wines')
+
+pph2 <- qplot(x = quality_rate, y = pH, data = white_wine, geom = 'boxplot', color = I('black'), fill = I('DARKSALMON') )+
+    ggtitle('the pH value for each rate')+
+    labs(x = 'the quality rate', y = 'pH value')
+
+grid.arrange(pph1, pph2, ncol = 2)
+  
+```
+
+The distribution of the pH is normally distributed, and the bulk of the data are between (2.9 - 3.4), from the box plots, we can see a lot of outliers, that are not more than 4 , I will take the statistical summary for each rate:
+
+```{r pH statisitical summary}
+by(white_wine$pH, white_wine$quality_rate, summary)
+```
+So there is no clear difference between the rates on pH values, that they are on average have a very close values of pH.
+
+but what is the most value of pH that is used in the wines?
+
+```{r}
+table(white_wine$pH)
+```
+the most pH values are used in the wines are between 3.1 and 3.25. 
+
+###the Sulphates investigation
+
+```{r sulphates1, message=FALSE, warning=FALSE, fig.height = 5, fig.width= 20}
+ps1 <- qplot(sulphates, data = white_wine, color = I('black'), fill = I('PLUM'))+
+     ggtitle('the potassium sulphate distribution')+
+     labs(x = 'the potassium sulphate amount(g/dm^3)', y = 'the number of wines')
+
+ps2 <- qplot(x = quality_rate, y = sulphates, data = white_wine, geom = 'boxplot', color = I('black'), fill = I('DARKSALMON') )+
+    ggtitle('the potassium sulphate for each rate')+
+    labs(x = 'the quality rate', y = 'the potassium sulphate (g/dm^3)')
+
+grid.arrange(ps1, ps2, ncol = 2)
+  
+```
+
+there are outliers in every rate, and the middle 50% for the three rates is between (0.4 - 0.6), the distribution is normally distributed.
+
+
+```{r sulphates2, message=FALSE, warning=FALSE, fig.height = 5, fig.width= 20}
+ps3 <- qplot(sulphates, data = white_wine, binwidth = .01, color = I('black'), fill = I('PLUM'))+
+     scale_x_continuous(limits = c(.2, 1), breaks = seq(.2, 1,.1))+
+     ggtitle('the potassium sulphate distribution')+
+     labs(x = 'the potassium sulphate amount(g/dm^3)', y = 'the number of wines')
+
+ps4 <- qplot(x = quality_rate, y = sulphates, data = white_wine, geom = 'boxplot', color = I('black'), fill = I('DARKSALMON') )+
+      coord_cartesian( ylim = c(.3,.6))+
+      ggtitle('the potassium sulphate for each rate')+
+      labs(x = 'the quality rate', y = 'the potassium sulphate (g/dm^3)')
+
+grid.arrange(ps3, ps4, ncol = 2)
+  
+```
+
+it is clear for all quality rates, that on average the amount of potassium sulphates is very close from each other.
+But what is the average of the sulphates that is added to the wines?
+
+```{r}
+summary(white_wine$sulphates)
+```
+
+on average .47 g/dm^3 from the sulphates is added to the wines. 
+
+###Alcohol investigation
+
+```{r alcohol1, message=FALSE, warning=FALSE, fig.height = 5, fig.width= 20}
+pa1 <- qplot(alcohol, data = white_wine, color = I('black'), fill = I('PLUM'))+
+     ggtitle('the alcohol percent by volume distribution')+
+     labs(x = 'alcohol percent by volume', y = 'the number of wines')
+
+pa2 <- qplot(x = quality_rate, y = alcohol, data = white_wine, geom = 'boxplot', color = I('black'), fill = I('DARKSALMON') )+
+    ggtitle('the alcohol percent for each rate')+
+    labs(x = 'the quality rate', y = 'the alcohol percent by volume')
+
+grid.arrange(pa1, pa2, ncol = 2)
+  
+```
+
+
+The bulk of the data are in the range(8.5 - 13)%, taking a better scaling for the plots:
+
+```{r alcohol2, message=FALSE, warning=FALSE, fig.height = 5, fig.width= 20}
+pa1 <- qplot(alcohol, data = white_wine, binwidth = .05, color = I('black'), fill = I('PLUM'))+
+     scale_x_continuous(breaks = seq(8,14, .5))+
+     ggtitle('the alcohol percent by volume distribution')+
+     labs(x = 'alcohol percent by volume', y = 'the number of wines')+
+     theme_set(theme_gray(base_size = 20))
+
+pa2 <- qplot(x = quality_rate, y = alcohol, data = white_wine, geom = 'boxplot', color = I('black'), fill = I('DARKSALMON') )+
+    coord_cartesian(ylim = c(9,13))+
+    ggtitle('the alcohol percent for each rate')+
+    labs(x = 'the quality rate', y = 'the alcohol percent by volume')+
+    theme_set(theme_gray(base_size = 20))
+
+grid.arrange(pa1, pa2, ncol = 2)
+  
+```
+
+
+On average,The Excellent rate has the highest percent of alcohol by the volume(11.5%), and the bad rate has the lowest percent of alcohol by volume(9.6%), and the middle 50% values of the excellent rate don't cross the middle 50% bad rate  values, so I think this property has a strong effect on the taste of the wine, we will see that soon.
+
+##Univariate Analysis
+
+###What is the structure of your dataset?
+
+the white wine quality data set has 4898 wines, with 11 chemical properties, and quality variable(rated from 0 which is the worst to 10 which is the best), all of these properties are numbers:
+
+   1 - fixed acidity (tartaric acid - g / dm^3)
+   2 - volatile acidity (acetic acid - g / dm^3)
+   3 - citric acid (g / dm^3)
+   4 - residual sugar (g / dm^3)
+   5 - chlorides (sodium chloride - g / dm^3)
+   6 - free sulfur dioxide (mg / dm^3)
+   7 - total sulfur dioxide (mg / dm^3)
+   8 - density (g / cm^3)
+   9 - pH
+   10 - sulphates (potassium sulphate - g / dm3)
+   11 - alcohol (% by volume)
+   
+observations:
+1. most of the wines are rated as 5, 6 quality.
+2.the rate 9 , and 3 have the least number of samples compared to the others.
+3.the residual sugar amount in the wines varies between 1 and 20 g/dm^3, and on average the high rates(7,8,9) have the minimum amount of it.
+4.the most of wines have .3 - .6 g/dm^3 amount of the sodium chloride, and on average the high quality rates have the minimum amount of it.
+5.the density of the water for the most of wines varies between .99 and 1 g/cm^3, and on average the high rates have the least density of water.
+6. the pH values varies between 2.9 and 3.4, with outliers not more than 3.82.
+7. the total sulfur dioxide property has outliers more than 300, located at the low rates. this property affects on the taste of wines with high concentration.
+8.the citric acid amount varies between .2 and .5 for the most wines, and there are outliers more than 1 g/dm^3.
+9.Alcohol percent for the most of the white wines is between 8.5% and 13% of the volume of wine, and on average the high rates have the maximum amount of it with 11.5%.
+10 In general, all of these properties have outliers .
+
+###What is/are the main feature(s) of interest in your dataset?
+
+The main features in the data set are the quality and Alcohol, and for sure we want to know which features are influence in the quality of the wine, I think alcohol is one of these features.
+
+###What other features in the dataset do you think will help support your investigation into your feature(s) of interest?
+the residual sugar, density, the total sulfur dioxide, and sodium chloride, these features have a difference in their values between the quality rates according to the box plots.
+
+###Did you create any new variables from existing variables in the dataset?
+
+Yes, I have created the quality_rate variable, because of the variation in the number of observations for each rate, that 9 rate has just 5 observations, and 3 rate has 20 observation , on the other hand, the rate 6 and 5 have thousands of observations.
+
+###Of the features you investigated, were there any unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
+
+Yes, I have transformed many features like:
+
+1.volatile acidity: transformed from right skewed to be a normal distributed, using the log10 transformation.
+2.the residual sugar feature: transformed from right skewed to be a bi modal distribution, using the log10 transformation.
+3.the chlorides feature: transformed from right skewed to be normal distribution using the log10 transformation.
+4.the free sulfur dioxide : transformed from right skewed to be normal distribution using the square root transformation.
+
+I transformed these features to be normally distributed or a distribution that more closely resembles as a normal distribution, to understand how the data flow for these features, that a lot of common statistical techniques, like linear regression, are based on the assumption that the data is a normal distribution. 
+
+##Bivariate Plots Section
+
+In this section, I will investigate the features using scatter plots,correlations, and conditional means.
+
+
+```{r warning=FALSE, message = FALSE, fig.height=20, fig.width=40 }
+##using upper argument to set the size of correlation coefficients equals to 10
+ggpairs(white_wine,upper = list(continuous = wrap(ggally_cor, size = 10)), axisLabels = 'internal')
+```
+
+From this scatter plot matrix, we can see the relationships between the variables, and the correlation coefficients between each other.
+
+1. strong linear relationships:
+
+(alcohol - density) : -0.78
+(residual sugar - density) : 0.839
+
+2. moderate linear relationships :
+
+(fixed acidity - pH) : -0.426
+(residual sugar - total sulfur dioxide): 0.401
+(residual sugar - alcohol) : -0.451
+(chlorides - alcohol): -0.36
+(total sulfur dioxide - density): 0.53
+(total sulfur dioxide - alcohol): -0.449
+(alcohol - quality): 0.436
+(density - quality): -0.307
+
+
+these are the most important relationships in this data set that I will investigate:
+
+###alcohol and density relationship:
+
+From the coefficient correlation, this relationship is strong, but The question here : what are the percents of alcohol that produce a high density, and the percents that produce a low density?
+
+```{r the relationship between the density and alcohol, message=FALSE, warning=FALSE, fig.height=5, fig.width=10}
+ggplot(aes(x = alcohol, y = density), data = white_wine)+
+  geom_point()+
+  ggtitle('the relationship between the density and alcohol')
+  
+```
+
+
+The bulk of the data are between .99 and 1 for the density values , after many iterations of scaling and solving the overploting using alpha value, I plot this scatter plot:
+
+```{r message=FALSE, warning=FALSE, fig.height=5, fig.width=10}
+ggplot(aes(x = alcohol, y = density), data = white_wine)+
+  geom_jitter(alpha = .4, color = I ('darksalmon'))+
+  scale_y_continuous(limits = c(quantile(white_wine$density,.01),quantile(white_wine$density,.99)), # removing 1% of the density values from both sides
+                     breaks = seq(.99, 1, .001))+
+  scale_x_continuous(breaks = seq(8,14,1))+
+  geom_line(stat = 'summary', fun.y = mean)+ #plotting the mean values of the density per each value of alcohol
+  geom_smooth(method = 'lm', color = 'red' )+ #plotting a linear smoother 
+  ggtitle('the relationship between the density and alcohol')
+  
+
+```
+
+
+the strong linear relationship between alcohol and the density is very clear in the scatter plot, and the vertical lines are because of effect of other variables.
+On average, the wines with the lowest amount of alcohol have the highest values of the density that more than .995 g/cm^3, while the wines with the highest amount of alcohol have not more than .992 g/cm^3.
+
+### residual sugar and density relashionship:
+
+the question is : what are the amounts of residual sugar that produce a high density, and the amounts that produce a low density?
+
+```{r message=FALSE, warning=FALSE, fig.height=5, fig.width=10}
+ggplot(aes(x = residual.sugar, y = density ), data = white_wine)+
+  geom_point()+
+  ggtitle('the relationship between residual sugar and density')
+```
+
+there is an outlier with residual sugar more than 60.
+
+
+The linear relationship is clear, but doing some scaling, removing outliers, and solving the overplotting is better:
+
+```{r message=FALSE, warning=FALSE, fig.height=5, fig.width=10}
+ggplot(aes(x = residual.sugar, y = density), data = white_wine)+
+  geom_jitter(alpha = .5, color = I('DARKSALMON'))+
+  scale_y_continuous(breaks = seq(.99,1,.001),
+                     limits = c(quantile(white_wine$density,.01),quantile(white_wine$density,.99)))+ # removing the 1% from the residual sugar values from both sides
+  scale_x_continuous(limits = c(0, quantile(white_wine$residual.sugar, .99)),breaks = seq(0,18,2) )+ #removing 1% from the up of residual sugar vlaues 
+  geom_line(stat = 'summary', fun.y = median)+
+  geom_smooth(method = 'lm', color = 'red')+
+  ggtitle('the relationship between residual sugar and density')
+```
+
+they are jumping up and down here, but the increasing in the density as the residual sugar is increasing is clear, on average the wines with residual sugar more than 15g/dm^3 produce a wine with density more than .996 g/ dm^3. and the wines with residual sugar less than 3 have a density with less than .992g/dm^3.
+
+
+
+I will take the overplotting region,it is almost between .5 and 2.5 on x-axis :
+
+```{r message=FALSE, warning=FALSE}
+ggplot(aes(x = residual.sugar, y = density), data = white_wine)+
+  geom_jitter(alpha = .5,color = I('DARKSALMON'))+
+  scale_y_continuous(limits = c(quantile(white_wine$density,.05),quantile(white_wine$density,.99)))+
+  scale_x_continuous(limits = c(0.5,2.5) )+
+  geom_smooth(method = 'lm', color = 'red')+
+  ggtitle('the relationship between residual sugar and density')
+```
+
+I think the vertical lines for each x value have reasons due to other variables, and if we return to the histogram of the residual sugar,we can see peaks in this area.
+
+
+###total sulfur dioxide and density relationship:
+
+The relationship between the total sulfur dioxide and density is not very strong but it is in a moderate level, so I think we can ask that what are the amounts of the total sulfur dioxide that produce wines with high density, and amounts that produce wines with low density?
+
+the scaling ,solving overplotting ,and adding smoother to the plot directly:
+
+```{r message=FALSE, warning=FALSE, fig.height=5, fig.width=10}
+ggplot(aes(x = total.sulfur.dioxide, y = density), data = white_wine)+
+  geom_jitter(alpha = .5, color = I('DARKSALMON'))+
+  scale_y_continuous(limits = c(quantile(white_wine$density,.01),quantile(white_wine$density,.99)))+
+  geom_smooth(method = 'lm', color = 'red' )+
+  ggtitle('total sulfur dioxide and density relationship')
+```
+
+There is a positive linear relationship here, but also lot of data, I think I reached to a dead end here, so I will create a new data set that has a conditional means, to understand how the mean of the density varies with the total sulfur dioxide, From the histogram of the total sulfur dioxide, we see that the bulk of the data are between 80 and 200, so I will subset the data first:
+
+```{r total sulfur dioxide and the density, message=FALSE, warning=FALSE, fig.height=5, fig.width= 10}
+wine_per_sulfur <- subset(white_wine, total.sulfur.dioxide >= 80 & total.sulfur.dioxide <= 200) %>%
+  group_by(total.sulfur.dioxide) %>%
+  summarise( density_mean = mean(density), n = n()) %>%
+  arrange(total.sulfur.dioxide)
+
+
+ggplot(aes(x = total.sulfur.dioxide, y = density_mean), data = wine_per_sulfur)+
+  geom_point(color = I('DARKSALMON'))+
+  scale_y_continuous(breaks = seq(.99,1,.001),
+                     limits = c(quantile(white_wine$density,.01),quantile(white_wine$density,.99)))+ # removing the 1% from the residual sugar values from both sides
+  geom_line(color = I('yellow'))+
+  geom_smooth(method = 'lm', color ='red')+
+  ggtitle('the mean of density per total sulfur dioxide')
+```
+
+the positive linear relationship is clear with conditional means, with many jumps at many points, for example at 75-100 mg/dm^3 the density is not more than .993, and at 175 - 200 mg/dm^3 the density is not less than 
+.994 g/dm^3.
+
+ 
+###alcohol and the residual sugar relationships:
+
+what are the amounts of residual sugar that added when the alcohol percent is high, and when alcohol percent is low? is there a linear relationship as what we see from the correlation coefficient that equals to -.451?
+
+```{r alcohol and residual sugar, fig.width=10, fig.height=5,  message=FALSE, warning=FALSE}
+ggplot(aes(x = alcohol, y = residual.sugar), data = white_wine)+
+  geom_point()+
+  ggtitle('the relationship between alcohol and residual sugar')
+```
+
+solving the overplotting problem:
+
+```{r message=FALSE, warning=FALSE, fig,highlight=5, fig.width=10}
+ggplot(aes(x = alcohol, y = residual.sugar), data = white_wine)+
+  geom_jitter(alpha = .5,size = 1, color = I('DARKSALMON'))+
+  scale_y_continuous(limits = c(quantile(white_wine$residual.sugar,0.01), quantile(white_wine$residual.sugar,0.99)))+
+  geom_smooth(method = 'lm', color = 'red')+
+  ggtitle('the relationship between alcohol and residual sugar')
+```
+
+I will Create a conditional means of the residual sugar amount for every alcohol value rounded to two decimal value, by creating a new data set:
+
+
+```{r message=FALSE, warning=FALSE, fig.height=5, fig.width=10}
+
+wine_per_alcohol <- subset(white_wine, alcohol >= 8.5 & alcohol <= 13) %>% #create new data set that has alcohol values between 8.5 and 13
+  group_by(alcohol) %>%
+  summarise(sugar_mean = mean(residual.sugar), n = n())%>%
+  arrange(alcohol)
+
+ggplot(aes(y = sugar_mean, x = alcohol), data = wine_per_alcohol)+
+  scale_y_continuous(breaks = seq(1,16,2))+
+  geom_point(color = I('DARKSALMON'), size = 3)+
+  geom_line(color = I('yellow'))+
+  geom_smooth(method = 'lm', color = I('red'))
+
+  
+
+```
+
+the points are jumping up and down, but on average the highest amount of alcohol wines have the lowest amounts of the residual sugar, that these wines have residual sugar amounts not more than 6 g/dm^3, while on average the wines with the lowest amount of alcohol have amounts of the residual sugar more than 9 g/dm^3 So the relationship is negative.
+
+###the total sulfur dioxide and alcohol relationship:
+
+what are the amounts of the total sulfur dioxide that added to the wines when alcohol percent is high, and when alcohol percent is low?
+I will investigate this relationship directly using the summary statistics to avoid any dead end status.
+
+```{r total sulfur dioxide and alcohol, message=FALSE, warning=FALSE, fig.height=5, fig.width=10}
+ggplot(aes(x = alcohol ,y= total.sulfur.dioxide), data = white_wine)+
+  geom_jitter(alpha = .5, color = I('DARKSALMON'))+
+  scale_y_continuous(limits = c(quantile(white_wine$total.sulfur.dioxide,.01),quantile(white_wine$total.sulfur.dioxide,.99)))+
+  geom_line(stat = 'summary', fun.y = mean)+
+  geom_smooth(method = 'lm')+
+  ggtitle(' total sulfur dioxide and alcohol relationship')
+```
+
+according to the mean summary on this scatter plot, the wines that have the least amounts of alcohol, have also amounts of the total sulfur dioxide more than 150 mg/dm^3 on average, then this amounts are decreasing, while the amounts of alcohol are increasing in the wines, that the highest amounts of alcohol are between 100- 125 mg/dm^3 on average.
+
+###chlorides and alcohol relationship
+
+the question is :what are the amounts of the chlorides that added to the wines when alcohol percent is high, and when alcohol percent is low?
+
+After many iterations of plotting in this relationship:
+
+```{r message=FALSE, warning=FALSE, fig.width=10, fig.height=5}
+ggplot(aes(x = alcohol, y= chlorides), data = white_wine)+
+  geom_jitter(alpha = .5, color = I('darksalmon'))+
+  scale_y_continuous(limits = c(quantile(white_wine$chlorides, .01), quantile(white_wine$chlorides, .95)))+
+  scale_x_continuous(limits = c(quantile(white_wine$alcohol, .01), quantile(white_wine$alcohol, .95)))+
+  geom_line(stat = 'summary', fun.y = median)+
+  geom_smooth(method = 'lm')+
+  geom_vline( xintercept = quantile(white_wine$alcohol, .50), linetype = 2, size =1 )+
+  ggtitle('chlorides and alcohol relationship')
+```
+
+
+From this plot, that I have put a vertical line in the half of alcohol data, we can notice that in the first half, On average the chlorides amount in most of the wines is not less than .045g/dm^3, on the other hand, on the second half on average, the most of wines is less than .045 g/dm^3. the relationship here is not very strong , but I think it worth to investigate.
+
+###pH and the fixed acidity relationship:
+
+There is a relationship between the pH and the fixed acidity, but from the histogram of the pH, the bulk of the data are between 2.9 and 3.4, So what is the range of pH value that takes a high fixed acidity value, and the range that takes a low fixed acidity value?
+
+```{r pH and fixed acidity, message=FALSE, warning=FALSE, fig.width=10, fig.height=5}
+ggplot(aes(x = fixed.acidity, y = pH), data = white_wine)+
+  geom_point(color = I('DARKSALMON'))+
+  scale_x_continuous(limits = c(quantile(white_wine$fixed.acidity, .01), quantile(white_wine$fixed.acidity, .99)))+
+  scale_y_continuous(limits = c(2.7,3.6))+
+  geom_line(stat = 'summary', fun.y = mean, size =1)+
+  geom_smooth(method = 'lm')
+```
+
+
+there is a negative linear relationship between the fixed acidity and the pH, I like this relationship, that there is no long up and down jumping, and the smooth line is on the means. 
+On average the wines with high level of fixed acidity have a pH less than 3.2, and the wines with low level of fixed acidity have a pH more than 3.2.
+
+##Quality investigation
+
+```{r quality investigation, fig.width=25, message=FALSE, warning=FALSE, fig.height=25}
+pq1 <- ggplot(aes(x = alcohol, fill = quality_rate), data = white_wine)+
+  geom_density()+
+  scale_x_log10()+
+  scale_fill_brewer(type = 'qual')
+
+pq2 <- ggplot(aes(x = density, fill = quality_rate), data = white_wine)+
+  geom_density()+
+  scale_x_continuous(limits = c(.98,1.01), breaks = seq(.98,1,.002))+
+  scale_fill_brewer(type = 'qual')
+
+pq3 <- ggplot(aes(x = chlorides, fill = quality_rate), data = white_wine)+
+  scale_x_continuous(limits = c(0,.1))+
+  geom_density()+
+  scale_fill_brewer(type = 'qual')
+
+pq4 <- ggplot(aes(x = residual.sugar, fill = quality_rate), data = white_wine)+
+  geom_density()+
+  scale_x_continuous(limits = c(0,20), breaks = seq(0,20,1))+
+  scale_fill_brewer(type = 'qual')
+
+pq5 <- ggplot(aes(x = total.sulfur.dioxide, fill = quality_rate), data = white_wine)+
+  geom_density()+
+  scale_x_continuous(breaks = seq(0,300,20), limits = c(0,300))+
+  scale_fill_brewer(type = 'qual')
+
+grid.arrange(pq1, pq2,pq3,pq4,pq5, ncol = 2)
+```
+
+alcohol and density features have a moderate linear relationship with the quality variable, plotting the density plots for each quality rate with(alcohol, density, chlorides,residual sugar, and total sulfur dioxide) gives us observations:
+
+1. on average,the excellent rate have a high percent of alcohol, then Good quality, and the bad quality has the lowest percent of it.
+2. the wines with the lowest density are rated as excellent quality rate, and the wines with the highest density are rated as bad quality rate.
+3.the peak of the excellent quality rate wines distribution has the lowest value of chlorides compared to the other peaks, so on average the excellent rate wines have the lowest amount of the sodium chlorides.
+4.On an amount of residual sugar 6g/dm^3 or less , the excellent rate has the highest density, then the good ,then the lowest density is the bad rated wines, but on the other hand, the bad rated wines have the highest density for the residual sugar more than 6.5 g/dm^3 .
+5. the wines that rated as bad have a high range of values for the total sulfur dioxide, the peaks of the distributions of the good and excellent rate are at 120 mg/dm^3.
+
+##Bivariate Analysis
+
+###Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
+
+The density of the wine is varying according to many variables, that it is decreasing while the percent of alcohol is increasing, and vice versa. it is increasing while the residual sugar is increasing, and vice versa.
+and it is increasing while the total sulfur dioxide is increasing.
+
+alcohol percent in the wine is increasing while the total sulfur dioxide is decreasing, the residual sugar is decreasing, and the chlorides is decreasing.
+So it has a negative linear relationships with total sulfur dioxide, the residual sugar, and the chlorides.
+
+The quality of the wine is affected with alcohol percent, residual sugar, total sulfur dioxide, and chlorides.
+
+
+###Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
+
+Yes, I observed the relationship between the pH and fixed acidity, that there is a negative relationship, while the fixed acidity is increasing, the pH is decreasing.
+
+
+###What was the strongest relationship you found?
+
+the strongest relationships are between the density and alcohol, and between the density and the residual sugar.
+
+##Multivariate Plots Section
+
+###Residual sugar and alcohol relationship for each quality rate.
+
+The question is : according to the previous investigations the wine with high percent of alcohol, is the residual sugar amount is responsible to be as bad or good quality rates?
+
+```{r message=FALSE, warning=FALSE, fig.height=5, fig.width=10}
+ggplot(aes(x = alcohol, y = residual.sugar, color = quality_rate), data = white_wine)+
+  geom_point(alpha = .5,size = 1)+
+  scale_y_continuous(limits = c(quantile(white_wine$residual.sugar,.5), quantile(white_wine$residual.sugar,0.99)))+
+  ggtitle('the relationship between alcohol and residual sugar')+
+  scale_color_brewer(type = 'qual')
+```
+
+
+This plot frankly arrived me to a dead end that the highest values of alcohol are as a good quality or excellent quality, I think doing conditional medians here is useful to solve this problem.
+
+```{r fig.height=7, fig.width=15, message=FALSE, warning=FALSE}
+
+wine_alcohol <- white_wine %>%  #create a new data set holds the medians of the residual sugar per quality rate per alcohol value
+  group_by(quality_rate, alcohol) %>%
+  summarise(residual_median = median(residual.sugar))%>%
+  ungroup()%>%
+  arrange(alcohol)
+  
+
+pline <- ggplot(aes(x = alcohol ,y = residual_median), data = wine_alcohol)+
+    scale_y_continuous(limits = c(quantile(white_wine$residual.sugar,.01), quantile(white_wine$residual.sugar,0.95)), #remove 1% from the down, and 5% from the up of residual sugar 
+                       breaks = seq(2,16,2))+ 
+    scale_x_continuous(breaks = seq(8,14,1))+
+    geom_line(aes(color = quality_rate))
+
+psmooth <- ggplot(aes(x = alcohol ,y = residual_median), data = wine_alcohol)+
+    scale_y_continuous(limits = c(quantile(white_wine$residual.sugar,.01), quantile(white_wine$residual.sugar,0.95)), #remove 1% from the down, and 5% from the up of residual sugar 
+                       breaks = seq(2,16,2))+ 
+    scale_x_continuous(breaks = seq(8,14,1))+
+    geom_smooth(aes(color = quality_rate))
+
+grid.arrange(pline, psmooth, ncol =1)
+```
+
+This plot tells us that at low percent of alcohol ,it is better to be the residual sugar in a high amount, that a low amount will produce a bad quality rate, and while alcohol is increasing, the residual sugar should decrease but with a moderate level of it, for example that when alcohol equals 10, we see the excellent rate has 6g/dm^3, the good has 7g/dm^3, and the bad has the lowest value. on the other hand in the range between 11.5 and 13 percent of alcohol we see the excellent rate has the highest amount of the residual sugar but not more than 4 g/dm^3.
+
+###Total sulfur dioxide with alcohol relationship for each quality rate
+
+```{r message=FALSE, warning=FALSE, fig.height=5, fig.width=10}
+ggplot(aes(x = alcohol, y = total.sulfur.dioxide , color = quality_rate), data = white_wine)+
+  geom_jitter(alpha = .5)+
+  scale_y_continuous(limits = c(quantile(white_wine$total.sulfur.dioxide, .01),
+                                quantile(white_wine$total.sulfur.dioxide,.99)))+
+  geom_smooth(method = 'lm')+
+  ggtitle(' total sulfur dioxide and alcohol relationship')+
+  scale_color_brewer(type = 'qual')
+```
+
+This plot arrived me to a dead end too, so it is better to do some conditional medians on the total sulfur dioxide per alcohol value:
+
+```{r fig.height=7, fig.width=15, message=FALSE, warning=FALSE}
+wine_alcohol_sulfur <- white_wine %>% #create a new data set holds the medians of the total sulfur dioxide for each quality rate for each value of alcohol
+  group_by(quality_rate, alcohol) %>%
+  summarise(sulfur_median = median(total.sulfur.dioxide))%>%
+  ungroup()%>%
+  arrange(alcohol)
+  
+
+pline.sulfur <- ggplot(aes(x = alcohol ,y = sulfur_median), data = wine_alcohol_sulfur)+
+    scale_y_continuous(limits = c(quantile(white_wine$total.sulfur.dioxide,.01), 
+                                  quantile(white_wine$total.sulfur.dioxide,0.95)), breaks = seq(80,180,20))+ 
+    scale_x_continuous(breaks = seq(8,14,1))+
+    geom_line(aes(color = quality_rate))
+
+psmooth.sulfur <-  ggplot(aes(x = alcohol ,y = sulfur_median), data = wine_alcohol_sulfur)+
+    scale_y_continuous(limits = c(quantile(white_wine$total.sulfur.dioxide,.01), 
+                                  quantile(white_wine$total.sulfur.dioxide,0.95)), breaks = seq(80,180,20))+ 
+    scale_x_continuous(breaks = seq(8,14,1))+
+    geom_smooth(aes(color = quality_rate))
+
+grid.arrange(pline.sulfur, psmooth.sulfur, ncol = 1)
+
+```
+
+This plot tells us that on average when the alcohol percent is low, the excellent quality rate has the lowest amount of the sulfur dioxide in some points, and when alcohol percent is high the excellent rate has the highest amount of the total sulfur dioxide in some points, but there is a lot of peaks here lead me to do a another deep investigation with four variables:
+
+###Investigate more than three variables
+
+
+in this section, I will investigate alcohol, quality_rate, residual sugar and total sulfur dioxide at the same plot:
+
+I will create a new variable called alcohol.percent, that is a factor variable with three levels of alcohol, (8-10),(10-12),(12-14), then I will rename the levels of 
+this variable to be (low, moderate, high)
+
+```{r message=FALSE, warning=FALSE}
+library(plyr)
+white_wine$alcohol.percent <- cut(white_wine$alcohol, breaks = c(8,10,12,14), include.lowest = FALSE)
+white_wine$alcohol.percent <- mapvalues(white_wine$alcohol.percent,
+                                        from = c('(8,10]','(10,12]', '(12,14]'), to = c('low','moderate','high')) # rename the levels of the alcohol.percent variable
+levels(white_wine$alcohol.percent)
+```
+
+```{r warning= FALSE, message=FALSE, fig.height=8, fig.width=30}
+ggplot(aes(x = total.sulfur.dioxide, y = residual.sugar),data = subset(white_wine,!is.na(alcohol.percent)))+
+  geom_point(aes(color = quality_rate))+
+  scale_y_continuous(limits = c(0,20), breaks = seq(0,20,1))+
+  scale_x_continuous(limits = c(0,250), breaks = seq(0,250,20))+
+  facet_wrap(~alcohol.percent)+
+  theme_set(theme_gray(base_size = 30))
+```
+
+we can see at a high level of alcohol there are few data points of the bad quality, and at a low level of alcohol there are few data points of the excellent quality, we see that the good quality in all of the levels of alcohol.
+Although this plot tells us a lot, but still the relationship between the residual sugar and the total sulfur dioxide doesn't clear, especially in the (10-12) alcohol percent, this is a dead end, the conditional means her is very good.
+
+```{r warning=FALSE, message=FALSE, fig.height=15, fig.width= 15}
+
+detach("package:plyr", unload=TRUE) # unload the plyr package that conflict with other packages
+
+
+wine_sulfur_sugar <- white_wine %>%  #create new data set holds the medians for each quality rate, for each alcohol percent level for each residual sugar
+  group_by(quality_rate, alcohol.percent, residual.sugar) %>%
+  summarise(sulfur_median = median(total.sulfur.dioxide))%>%
+  ungroup()%>%
+  arrange(residual.sugar)
+  
+
+ggplot(aes(x = residual.sugar ,y = sulfur_median), data = subset(wine_sulfur_sugar, !is.na(alcohol.percent)))+
+    scale_x_continuous(limits = c(quantile(white_wine$residual.sugar,.05), quantile(white_wine$residual.sugar,0.99)), breaks = seq(0,20,2))+ 
+    geom_smooth(aes(color = quality_rate), size = 2)+
+    geom_smooth(linetype =2)+
+    facet_wrap(~alcohol.percent, ncol = 1)+
+    theme_set(theme_gray(base_size = 30))
+
+
+```
+
+Wow, a lot of information here, the decreasing in the total sulfur dioxide is clear between the levels of alcohol, I think the taste of wine with a high amount of the total sulfur dioxide with a high percent of alcohol will be very bad, so they decrease the amount of the total sulfur dioxide as they increase the alcohol. 
+
+we can see also that in the level (10-12) of alcohol, the excellent quality rate has an amount of residual sugar not more than 15g/dm^3.
+
+From the grand median which is with dashed blue line, it approve to us that in the fist level the most of the wines are from the good and bad quality rates, in the second level the wines are from all quality rates, and the third level the most of wines are from excellent and good rates. 
+
+##Making predictions
+
+from the previous investigation, the relationships between alcohol,chlorides, residual sugar, total sulfur dioxide and the quality are linear, so to predict the quality of the a wine, building a linear model will be good for that:
+
+```{r message=FALSE, warning=FALSE}
+m1 <- lm(I(quality) ~ I(alcohol), data = white_wine)
+m2 <- update(m1, ~ . + residual.sugar)
+m3 <- update(m2, ~ . + total.sulfur.dioxide)
+m4 <- update(m3, ~ . + chlorides)
+mtable(m1, m2, m3,m4)
+
+```
+
+
+##Multivariate Analysis
+
+###Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
+
+the relationship between the residual sugar and alcohol for each quality rate tells us that the wine to be as an excellent rate, the residual sugar should be high with a low percent of alcohol, or a moderate amount of the residual sugar with a moderate percent of alcohol, or a low amount of residual sugar with a high percent of alcohol.
+
+the relationship of the total sulfur dioxide with alcohol for each quality rate didn't very clear for me, I think because of the effect of the residual sugar, so I did an investigation with these four variables to see the relationship, I created a new factor variable with the levels of alcohol, then faceting the plots by it, and the findings surprised me.
+
+So I think the features that strengthen each other when we want to investigate the quality rate, are the residual sugar, total sulfur dioxide, and alcohol.
+
+###Were there any interesting or surprising interactions between features?
+
+Yes, there are, that I see if the alcohol percent is low ,then the residual sugar and the total sulfur dioxide should be the lowest to be as an excellent rate and as the residual sugar is increasing the sulfur dioxide is increasing to be the highest residual sugar with the highest sulfur dioxide as an excellent rate.
+
+###OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
+
+Yes I did a linear regression model, the strength of this model that is really used the most variables that affect on the quality of the wines according to our investigation which have a linear relationship with each other, but the value of R- squared is bad which equals to .2 for the all models, that the R-squared is a statistical measure of how close the data are to the fitted regression line. when this value is close to 1, that means the model fits the data very well. 
+
+
+##Final Plots and Summary
+
+###plot one
+
+```{r message=FALSE, warning=FALSE, fig.height = 5, fig.width= 15}
+ theme_set(theme_gray(base_size = 16))
+pa1 <- qplot(alcohol, data = white_wine, binwidth = .05, color = I('black'), fill = I('PLUM'))+
+     scale_x_continuous(breaks = seq(8,14, .5))+
+     ggtitle('alcohol percent by volume distribution')+
+     labs(x = 'alcohol percent by volume', y = 'the number of wines')
+
+pa2 <- qplot(x = quality_rate, y = alcohol, data = white_wine, geom = 'boxplot', color = I('black'), fill = I('DARKSALMON') )+
+    coord_cartesian(ylim = c(9,13))+
+    ggtitle('the alcohol percent for each rate')+
+    labs(x = 'the quality rate', y = 'the alcohol percent by volume')
+
+grid.arrange(pa1, pa2, ncol = 2)
+  
+```
+
+
+###Describtion One
+
+The plot describes the percent of alcohol by volume, that the most wines have (8.7-13)% of alcohol, and more than 500 of the wines have around 9.5% of alcohol(the two peaks in the histogram),
+the most interesting observation here is the wines that rated as excellent quality have the highest percent of alcohol, and the wines that rated good have a moderate percent of alcohol, and the wines that rated as bad have the lowest percent of alcohol. 
+
+```{r statistical summary}
+by(white_wine$alcohol, white_wine$quality_rate,summary)
+
+```
+
+
+
+###Plot two
+
+```{r fig.width= 30, fig.height= 15, warning=FALSE, message=FALSE}
+
+ theme_set(theme_gray(base_size = 20))
+
+pq1 <- ggplot(aes(x = alcohol, fill = quality_rate), data = white_wine)+
+  geom_density()+
+  scale_x_log10()+
+  scale_fill_brewer(type = 'qual')+
+  labs(x = 'alcohol percent', y = 'the density ')+
+  ggtitle('the percent of alcohol for each quality rate distribution')
+
+pq2 <- ggplot(aes(x = density, fill = quality_rate), data = white_wine)+
+  geom_density()+
+  scale_x_continuous(limits = c(.98,1.01), breaks = seq(.98,1,.002))+
+  scale_fill_brewer(type = 'qual')+
+  labs(x = 'the density of wines (g/dm^3)', y = 'the density')+
+  ggtitle('the density of wines for each quality rate distribution ')
+
+pq3 <- ggplot(aes(x = chlorides, fill = quality_rate), data = white_wine)+
+  scale_x_continuous(limits = c(0,.1))+
+  geom_density()+
+  scale_fill_brewer(type = 'qual')+
+  labs(x = 'chlorides (g/dm^3)', y = 'the density')+
+  ggtitle('the soduim chlorides for each quality rate distribution')
+  
+
+pq4 <- ggplot(aes(x = residual.sugar, fill = quality_rate), data = white_wine)+
+  geom_density()+
+  scale_x_continuous(limits = c(0,20), breaks = seq(0,20,1))+
+  scale_fill_brewer(type = 'qual')+
+  labs(x = 'residual sugar(g/dm^3)', y = 'the density')+
+  ggtitle('the residual sugar for each quality rate distribution')
+
+pq5 <- ggplot(aes(x = total.sulfur.dioxide, fill = quality_rate), data = white_wine)+
+  geom_density()+
+  scale_x_continuous(breaks = seq(0,300,20), limits = c(0,300))+
+  scale_fill_brewer(type = 'qual')+
+  labs(x = 'total sulfur dioxide(mg/dm^3)', y = 'the density')+
+  ggtitle('the total sulfur dioxide for each quality rate distribution')
+
+grid.arrange(pq1, pq2,pq3,pq4,pq5, ncol = 2)
+```
+
+###Describtion two
+
+alcohol and density features have a moderate linear relationship with the quality variable, plotting the density plots for each quality rate with(alcohol, density, chlorides,residual sugar, and total sulfur dioxide) gives us observations:
+
+1. on average,the excellent rate have a high percent of alcohol, then Good quality, and the bad quality has the lowest percent of it.
+2. the wines with the lowest density are rated as excellent quality rate, and the wines with the highest density are rated as bad quality rate.
+3.the peak of the excellent quality rate wines distribution has the lowest value of chlorides compared to the other peaks, so on average the excellent rate wines have the lowest amount of the sodium chlorides.
+4.On an amount of residual sugar 6g/dm^3 or less , the excellent rate has the highest density, then the good ,then the lowest density is the bad rated wines, but on the other hand, the bad rated wines have the highest density for the residual sugar more than 6.5 g/dm^3 .
+5. the wines that rated as bad have a high range of values for the total sulfur dioxide, the peaks of the distributions of the good and excellent rate are at 120 mg/dm^3.
+
+these statistical summaries support the finding off this plot:
+```{r message=FALSE, warning=FALSE}
+by(white_wine$alcohol, white_wine$quality_rate, summary)
+
+by(white_wine$chlorides, white_wine$quality_rate, summary)
+
+by(white_wine$residual.sugar, white_wine$quality_rate, summary)
+
+by(white_wine$total.sulfur.dioxide, white_wine$quality_rate, summary)
+```
+
+
+###Plot three
+
+```{r warning=FALSE, message=FALSE, fig.height=15, fig.width= 15}
+wine_sulfur_sugar <- white_wine %>%  #create new data set holds the medians of total sulfur dioxide for each qualityrate for each alcohol percent level for each residual value
+  group_by(quality_rate, alcohol.percent,residual.sugar) %>%
+  summarise(sulfur_median = median(total.sulfur.dioxide))%>%
+  ungroup()%>%
+  arrange(residual.sugar)
+  
+
+ggplot(aes(x = residual.sugar ,y = sulfur_median), data = subset(wine_sulfur_sugar, !is.na(alcohol.percent)))+
+    scale_x_continuous(limits = c(quantile(white_wine$residual.sugar,.05), 
+                                  quantile(white_wine$residual.sugar,0.99)),
+                       breaks = seq(0,20,2))+ # remove 5% from the down and 1% from the up of the residual sugar values
+    geom_smooth(aes(color = quality_rate), size = 2)+
+    geom_smooth(linetype =2)+
+    facet_wrap(~alcohol.percent, ncol = 1)+
+    theme_set(theme_gray(base_size = 30))+
+    labs(y = 'total sulfur dioxide (mg/dm^3)', x = 'residual sugar(g/dm^3)' )+
+    ggtitle('   the relationship between residual sugar
+    and total sulfur dioxide for each quality
+    rate for each alcohol level')
+
+    
+
+```
+
+###Describtion three
+
+This plot describes alcohol percent, the total sulfur dioxide, and the residual sugar for each quality rate, the wines with a low percent of alcohol most of them rated as good and bad, that we can see from the Grand mean(dashed line), and the wines with a high percent of alcohol most of them rated as good and excellent quality(from the Grand mean too).
+
+The linear relationship between the residual sugar and alcohol is positive, So as the residual sugar is increasing, the total sulfur dioxide is increasing too in all of the quality rates.
+
+the wines with the excellent quality rate don't have more than 16 g/dm^3 of the residual sugar except with a low percent of alcohol.
+So the wines with excellent quality with a moderate level of alcohol have the lowest amount of the total sulfur dioxide,and they increasing until they have a moderate amount of the residual sugar, then they will have a total sulfur dioxide amount more than the bad wines.
+
+this statistical summaries support what we find from this plot.
+
+```{r}
+alcohol.low <- subset(white_wine, alcohol.percent == 'low') #create a new dataset holds wines with low alcohol percent
+by(alcohol.low$total.sulfur.dioxide, alcohol.low$quality_rate, summary)
+print('-----------------------------------------------------')
+
+alcohol.moderate <- subset(white_wine, alcohol.percent == 'moderate') #create a new dataset holds wines with moderate alcohol percent
+by(alcohol.moderate$total.sulfur.dioxide, alcohol.moderate$quality_rate, summary)
+print('-----------------------------------------------------')
+
+alcohol.high <- subset(white_wine, alcohol.percent == 'high') #create a new dataset holds wines with high alcohol percent
+by(alcohol.high$total.sulfur.dioxide, alcohol.high$quality_rate, summary)
+print('-----------------------------------------------------')
+
+by(alcohol.low$residual.sugar, alcohol.low$quality_rate, summary)
+
+print('-----------------------------------------------------')
+by(alcohol.moderate$residual.sugar,alcohol.moderate$quality_rate, summary)
+
+
+print('-----------------------------------------------------')
+by(alcohol.high$residual.sugar, alcohol.high$quality_rate, summary)
+
+
+```
+
+##Reflection
+
+
+  The white wine data set contains 4898 white wines with the amounts of their chemical properties and the quality that is rated by experts, In this data set the big question was :   
+                             **Which chemical properties influence the quality of white wines?**
+
+  I started by doing analysis on each property alone to see its distribution, and side by side its relationship with the quality of the wines using the box plot, from this analysis , there was a lot of findings but the most interesting thing is the alcohol feature, which was very clear that it is an important factor in the quality of the wine. then I did a bi variate analysis between the variables that have a linear relationship with each other, that I used the scatter plot matrix and the correlation coefficients to find these variables, one of these investigation is the relationship between the density and alcohol, and between the density and the residual sugar, which were interesting for me may be because of the strong linear relationship between them, then I did a multivariate analysis with the quality rate, there were many difficulties in some points but on the other wise, there were successes in solving a dead ends problem.
+
+###Where did I run into difficulties in the analysis?  
+
+  I ran into difficulties in the analysis, the first one was I can't understand the chemical properties, but by reading about this data set I became familiar with them, especially the units were clear in the text, and that helped me in understanding the wines and how the chemicals are added to wines,another thing is the overplotting and dead ends situations in many cases, that there are a lot of data points in some region with no relationships seems to me, so when using alpha with value .5, taking summaries on the scatter plots, and putting smoother, the analysis flowed,  and the relationships became more clear.
+
+###Where did I find successes?
+
+  Although I found difficulties in my analysis, I also found successes in it, the relationship between quality and alcohol, solving the overplotting and dead ends with alpha value, and the conditional means and medians, the linear relationship between alcohol, residual sugar with the density ,the relationship between the variables and the quality rates,all of these were successes for me, but the biggest one was when I put the four variable in one plot (residual sugar, total sulfur dioxide, alcohol, quality), I found a large amount of information and supporting it with statistical summaries to enable the reader to find any information he wants. 
+
+###How could the analysis be enriched in future work ?
+
+ I think we still can't predict the quality of the wine by the linear regression model, that the R-squared is very low, so we want other model doing the prediction,
+ one of the machine learning algorithms will be suitable for that.
+
+
+
+
+##Resources:
+
+1. the udacity EDA course, it is an intensive course with a large amount of information
+https://mena.udacity.com/course/data-analysis-with-r--ud651
+
+2.http://www.cookbook-r.com/Manipulating_data/Renaming_levels_of_a_factor/
+
+
+
