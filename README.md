@@ -13,3 +13,6 @@ This data set will be analyzed to eventually answer this question.
 ## Dependencies
 
 the R language is used in this project, Markdown file(RMD file) created by RStudio.
+
+## Instructions
+To see the full Html project, please download the file
